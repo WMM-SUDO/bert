@@ -4,6 +4,7 @@ from tqdm import tqdm
 import time
 from datetime import timedelta
 import json
+import random
 
 PAD, CLS = '[PAD]', '[CLS]'  # padding符号, bert中综合信息符号
 
@@ -11,6 +12,8 @@ PAD, CLS = '[PAD]', '[CLS]'  # padding符号, bert中综合信息符号
 def build_dataset(config):
     def load_dataset(path, pad_size=32):
         contents = []
+        true_contents = []
+        false_contents = []
         one_label = 18
         with open(path, 'r', encoding='UTF-8') as f:
             label_cnt = 0
@@ -28,12 +31,6 @@ def build_dataset(config):
                 else:
                     label = 0
 
-                # lin = line.strip()
-                # if not lin:
-                #     continue
-                # content, label = lin.split('\t')
-                # token = config.tokenizer.tokenize(content)
-                # token = [CLS] + token
                 seq_len = len(token)
                 mask = []
                 token_ids = config.tokenizer.convert_tokens_to_ids(token)
@@ -46,8 +43,16 @@ def build_dataset(config):
                         mask = [1] * pad_size
                         token_ids = token_ids[:pad_size]
                         seq_len = pad_size
+                if label:
+                    true_contents.append((token_ids, int(label), seq_len, mask))
+                else:
+                    false_contents.append((token_ids, int(label), seq_len, mask))
                 contents.append((token_ids, int(label), seq_len, mask))
-        print('  ', label_cnt, '个', one_label, '号标签.')
+        false_num = len(false_contents)
+        true_num = len(true_contents)
+        contents = true_contents*int(false_num/true_num) + false_contents
+        print('  ', label_cnt, '个', one_label, '号标签.', len(contents), '条数据')
+        random.shuffle(contents)
         return contents
 
     train = load_dataset(config.train_path, config.pad_size)
