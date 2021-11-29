@@ -34,4 +34,6 @@ if __name__ == '__main__':
 
     # train
     model = x.Model(config).to(config.device)
+    device_ids = [0]
+    model = torch.nn.DataParallel(model, device_ids=device_ids)
     train(config, model, train_iter, dev_iter, test_iter)

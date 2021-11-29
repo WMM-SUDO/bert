@@ -402,8 +402,14 @@ class BertEncoder(nn.Module):
 
     def forward(self, hidden_states, attention_mask, output_all_encoded_layers=True):
         all_encoder_layers = []
+        layer_cnt = 0
         for layer_module in self.layer:
             hidden_states = layer_module(hidden_states, attention_mask)
+
+            layer_cnt += 1
+            if layer_cnt == 10:
+                hidden_states.detach()  # todo
+                # print("&")
             if output_all_encoded_layers:
                 all_encoder_layers.append(hidden_states)
         if not output_all_encoded_layers:

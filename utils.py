@@ -7,6 +7,9 @@ import json
 
 PAD, CLS = '[PAD]', '[CLS]'  # padding符号, bert中综合信息符号
 
+test_local =1
+if test_local:
+    print("This is test of a mini dataset.............................")
 
 def build_dataset(config):
     def load_dataset(path, pad_size=32):
@@ -43,6 +46,8 @@ def build_dataset(config):
                         seq_len = pad_size
                 contents.append((token_ids, int(label), seq_len, mask))
         print(label_cnt, '个25号标签.')
+        if test_local:
+            return contents[:300]
         return contents
 
     train = load_dataset(config.train_path, config.pad_size)

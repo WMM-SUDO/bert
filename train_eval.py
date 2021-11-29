@@ -54,7 +54,7 @@ def train(config, model, train_iter, dev_iter, test_iter):
             loss = F.cross_entropy(outputs.softmax(dim=1), labels)
             loss.backward()
             optimizer.step()
-            if total_batch % 100 == 0:
+            if total_batch % 1 == 0:
                 # 每多少轮输出在训练集和验证集上的效果
                 true = labels.data.cpu()
                 predic = torch.max(outputs.data, 1)[1].cpu()
@@ -87,13 +87,13 @@ def test(config, model, test_iter):
     model.load_state_dict(torch.load(config.save_path))
     model.eval()
     start_time = time.time()
-    test_acc, test_loss, test_report, test_confusion = evaluate(config, model, test_iter, test=True)
+    test_acc, test_loss = evaluate(config, model, test_iter, False)
     msg = 'Test Loss: {0:>5.2},  Test Acc: {1:>6.2%}'
     print(msg.format(test_loss, test_acc))
-    print("Precision, Recall and F1-Score...")
-    print(test_report)
-    print("Confusion Matrix...")
-    print(test_confusion)
+    # print("Precision, Recall and F1-Score...")
+    # print(test_report)
+    # print("Confusion Matrix...")
+    # print(test_confusion)
     time_dif = get_time_dif(start_time)
     print("Time usage:", time_dif)
 
