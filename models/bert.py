@@ -21,9 +21,9 @@ class Config(object):
 
         self.require_improvement = 1000  # 若超过1000batch效果还没提升，则提前结束训练
         self.num_classes = len(self.class_list)  # 类别数
-        self.num_epochs = 3  # epoch数
+        self.num_epochs = 1  # epoch数
         self.batch_size = 128  # mini-batch大小
-        self.pad_size = 32  # 每句话处理成的长度(短填长切)
+        self.pad_size = 3  # 每句话处理成的长度(短填长切)
         print("batch size: ", self.batch_size, "pad size: ", self.pad_size)
 
         self.learning_rate = 5e-5  # 学习率

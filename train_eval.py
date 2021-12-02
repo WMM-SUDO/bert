@@ -51,7 +51,7 @@ def train(config, model, train_iter, dev_iter, test_iter):
         for i, (trains, labels) in enumerate(train_iter):
             outputs = model(trains)
             model.zero_grad()
-            loss = F.cross_entropy(outputs.softmax(dim=1), labels)
+            loss = F.cross_entropy(outputs, labels)
             loss.backward()
             optimizer.step()
             if total_batch % 1 == 0:
@@ -70,6 +70,12 @@ def train(config, model, train_iter, dev_iter, test_iter):
                 time_dif = get_time_dif(start_time)
                 msg = 'Iter: {0:>6},  Train Loss: {1:>5.2},  Train Acc: {2:>6.2%},  Val Loss: {3:>5.2},  Val Acc: {4:>6.2%},  Time: {5} {6}'
                 print(msg.format(total_batch, loss.item(), train_acc, dev_loss, dev_acc, time_dif, improve))
+                if (total_batch + 2) % len(train_iter) == 0:
+                    print('label: \n')
+                    print(true)
+                    print('predic: \n')
+                    print(predic)
+
                 model.train()
             total_batch += 1
             if total_batch - last_improve > config.require_improvement:
@@ -87,13 +93,13 @@ def test(config, model, test_iter):
     model.load_state_dict(torch.load(config.save_path))
     model.eval()
     start_time = time.time()
-    test_acc, test_loss = evaluate(config, model, test_iter, False)
+    test_acc, test_loss, test_report, test_confusion = evaluate(config, model, test_iter, True)
     msg = 'Test Loss: {0:>5.2},  Test Acc: {1:>6.2%}'
     print(msg.format(test_loss, test_acc))
-    # print("Precision, Recall and F1-Score...")
-    # print(test_report)
-    # print("Confusion Matrix...")
-    # print(test_confusion)
+    print("Precision, Recall and F1-Score...")
+    print(test_report)
+    print("Confusion Matrix...")
+    print(test_confusion)
     time_dif = get_time_dif(start_time)
     print("Time usage:", time_dif)
 
@@ -106,7 +112,7 @@ def evaluate(config, model, data_iter, test=False):
     with torch.no_grad():
         for texts, labels in data_iter:
             outputs = model(texts)
-            loss = F.cross_entropy(outputs.softmax(dim=1), labels)
+            loss = F.cross_entropy(outputs, labels)
             loss_total += loss
             labels = labels.data.cpu().numpy()
             predic = torch.max(outputs.data, 1)[1].cpu().numpy()
