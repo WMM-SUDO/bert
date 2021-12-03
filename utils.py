@@ -14,7 +14,7 @@ def build_dataset(config):
         contents = []
         true_contents = []
         false_contents = []
-        one_label = 25
+        one_label = 17
         with open(path, 'r', encoding='UTF-8') as f:
             label_cnt = 0
             diu = 0
