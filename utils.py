@@ -5,6 +5,7 @@ import time
 from datetime import timedelta
 import json
 import numpy
+import random
 
 PAD, CLS = '[PAD]', '[CLS]'  # padding符号, bert中综合信息符号
 
@@ -64,7 +65,9 @@ def build_dataset(config):
                         seq_len = pad_size
                 # contents.append((token_ids, int(label), seq_len, mask))
                 contents.append((token_ids, (label), seq_len, mask))
-
+        contents = contents * 3
+        random.shuffle(contents)
+        print(len(contents))
         return contents
 
     def load_dataset(path, pad_size=32):
@@ -200,4 +203,3 @@ def get_time_dif(start_time):
     end_time = time.time()
     time_dif = end_time - start_time
     return timedelta(seconds=int(round(time_dif)))
-
