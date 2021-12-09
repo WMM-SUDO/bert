@@ -4,35 +4,53 @@ from tqdm import tqdm
 import time
 from datetime import timedelta
 import json
-import random
+import numpy
 
 PAD, CLS = '[PAD]', '[CLS]'  # padding符号, bert中综合信息符号
 
-LABEL = 87
 
 def build_dataset(config):
     def load_dataset_oversampling(path, pad_size=32):
         contents = []
-        true_contents = []
-        false_contents = []
-        one_label = LABEL
+        seq_len_all = []
+
         with open(path, 'r', encoding='UTF-8') as f:
-            label_cnt = 0
-            diu = 0
-
             for line in tqdm(f):
-                diu += 1
                 dic = json.loads(line)
+                '''
+                lin = line.strip()
+                if not lin:
+                    continue
+                # print('$$$$$$$$$$$$$$$'+lin+'$$$$$$$$$$$$$$$')
+                content, label = lin.split('\t')
+                token = config.tokenizer.tokenize(content)
+                token = [CLS] + token
+                '''
+
+                '''
+                #把每个label拆成一个数据
                 token = [CLS] + dic['features_content']
-                labels = dic['labels_index']
+                for i in range(dic['labels_num']):
+                    label = dic['labels_index'][i]
+                    seq_len = len(token)
+                    mask = []
+                    token_ids = config.tokenizer.convert_tokens_to_ids(token)
 
-                if one_label in labels:
-                    label = 1
-                    label_cnt += 1
-                else:
-                    label = 0
-
+                    if pad_size:
+                        if len(token) < pad_size:
+                            mask = [1] * len(token_ids) + [0] * (pad_size - len(token))
+                            token_ids += ([0] * (pad_size - len(token)))
+                        else:
+                            mask = [1] * pad_size
+                            token_ids = token_ids[:pad_size]
+                            seq_len = pad_size
+                    contents.append((token_ids, int(label), seq_len, mask))
+                '''
+                token = [CLS] + dic['features_content']
+                label = dic['labels_index']
                 seq_len = len(token)
+                seq_len_all.append(seq_len)
+
                 mask = []
                 token_ids = config.tokenizer.convert_tokens_to_ids(token)
 
@@ -44,37 +62,52 @@ def build_dataset(config):
                         mask = [1] * pad_size
                         token_ids = token_ids[:pad_size]
                         seq_len = pad_size
-                if label:
-                    true_contents.append((token_ids, int(label), seq_len, mask))
-                else:
-                    false_contents.append((token_ids, int(label), seq_len, mask))
-                contents.append((token_ids, int(label), seq_len, mask))
-        false_num = len(false_contents)
-        true_num = len(true_contents)
-        contents = true_contents*int(false_num/true_num) + false_contents
-        print('     train data: ', label_cnt, '个', one_label, '号标签.', false_num+true_num, '个数据, ', '过采样后', len(contents), '条数据')
-        random.shuffle(contents)
+                # contents.append((token_ids, int(label), seq_len, mask))
+                contents.append((token_ids, (label), seq_len, mask))
+
         return contents
 
     def load_dataset(path, pad_size=32):
         contents = []
-        one_label = LABEL
+        seq_len_all = []
+
         with open(path, 'r', encoding='UTF-8') as f:
-            label_cnt = 0
-            diu = 0
-
             for line in tqdm(f):
-                diu += 1
                 dic = json.loads(line)
-                token = [CLS] + dic['features_content']
-                labels = dic['labels_index']
+                '''
+                lin = line.strip()
+                if not lin:
+                    continue
+                # print('$$$$$$$$$$$$$$$'+lin+'$$$$$$$$$$$$$$$')
+                content, label = lin.split('\t')
+                token = config.tokenizer.tokenize(content)
+                token = [CLS] + token
+                '''
 
-                if one_label in labels:
-                    label = 1
-                    label_cnt += 1
-                else:
-                    label = 0
+                '''
+                #把每个label拆成一个数据
+                token = [CLS] + dic['features_content']
+                for i in range(dic['labels_num']):
+                    label = dic['labels_index'][i]
+                    seq_len = len(token)
+                    mask = []
+                    token_ids = config.tokenizer.convert_tokens_to_ids(token)
+
+                    if pad_size:
+                        if len(token) < pad_size:
+                            mask = [1] * len(token_ids) + [0] * (pad_size - len(token))
+                            token_ids += ([0] * (pad_size - len(token)))
+                        else:
+                            mask = [1] * pad_size
+                            token_ids = token_ids[:pad_size]
+                            seq_len = pad_size
+                    contents.append((token_ids, int(label), seq_len, mask))
+                '''
+                token = [CLS] + dic['features_content']
+                label = dic['labels_index']
                 seq_len = len(token)
+                seq_len_all.append(seq_len)
+
                 mask = []
                 token_ids = config.tokenizer.convert_tokens_to_ids(token)
 
@@ -86,8 +119,9 @@ def build_dataset(config):
                         mask = [1] * pad_size
                         token_ids = token_ids[:pad_size]
                         seq_len = pad_size
-                contents.append((token_ids, int(label), seq_len, mask))
-        print('  ', label_cnt, '个', one_label, '号标签.')
+                # contents.append((token_ids, int(label), seq_len, mask))
+                contents.append((token_ids, (label), seq_len, mask))
+
         return contents
 
     train = load_dataset_oversampling(config.train_path, config.pad_size)
@@ -97,6 +131,7 @@ def build_dataset(config):
 
 
 class DatasetIterater(object):
+
     def __init__(self, batches, batch_size, device):
         self.batch_size = batch_size
         self.batches = batches
@@ -108,8 +143,21 @@ class DatasetIterater(object):
         self.device = device
 
     def _to_tensor(self, datas):
+        class_size = 148
+
         x = torch.LongTensor([_[0] for _ in datas]).to(self.device)
-        y = torch.LongTensor([_[1] for _ in datas]).to(self.device)
+        y_np = numpy.zeros((1, class_size), dtype=float)
+        for _ in datas:
+            # 对每个labels [2,3,4]这样的，把148维数组对应的位置搞成0
+            labels = _[1]
+            labels_np = labels
+            label_row = numpy.zeros((1, class_size), dtype=float)
+            label_row[[numpy.zeros(len(labels), dtype=int), labels_np]] = 1.0
+            y_np = numpy.concatenate((y_np, label_row))
+        y_np = y_np[1:]
+        y = torch.LongTensor(y_np).to(self.device)
+
+        # y = torch.LongTensor([_[1] for _ in datas]).to(self.device)
 
         # pad前的长度(超过pad_size的设为pad_size)
         seq_len = torch.LongTensor([_[2] for _ in datas]).to(self.device)
@@ -152,3 +200,4 @@ def get_time_dif(start_time):
     end_time = time.time()
     time_dif = end_time - start_time
     return timedelta(seconds=int(round(time_dif)))
+

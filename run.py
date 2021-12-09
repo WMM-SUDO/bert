@@ -34,6 +34,7 @@ if __name__ == '__main__':
 
     # train
     model = x.Model(config).to(config.device)
-    # device_ids = [0]
+    # device_ids = [0,1,2,3,4,5,6,7]
     # model = torch.nn.DataParallel(model, device_ids=device_ids)
+    # print("on gpu ", device_ids)
     train(config, model, train_iter, dev_iter, test_iter)
